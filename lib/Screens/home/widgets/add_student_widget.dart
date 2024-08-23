@@ -1,5 +1,6 @@
+import 'dart:convert';
 import 'dart:developer';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:student_database/db/functions/db_functions.dart';
@@ -14,16 +15,13 @@ class AddStudentWidget extends StatefulWidget {
 
 class _AddStudentWidgetState extends State<AddStudentWidget> {
   final _nameController = TextEditingController();
-
   final _ageController = TextEditingController();
-
   final _placeController = TextEditingController();
-
   final _phoneController = TextEditingController();
-
   final _formKey = GlobalKey<FormState>();
 
   final ImagePicker picker = ImagePicker();
+  Uint8List? _imageData;
 
   @override
   Widget build(BuildContext context) {
@@ -33,19 +31,15 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
         autovalidateMode: AutovalidateMode.always,
         key: _formKey,
         child: Column(mainAxisSize: MainAxisSize.max, children: [
-          const SizedBox(
-            height: 20,
-          ),
+          const SizedBox(height: 20),
           imageProfile(),
-          _imageToString == ''
+          _imageData == null
               ? const Text(
-                  'select your image',
+                  'Select your image',
                   style: TextStyle(color: Colors.red),
                 )
               : const SizedBox(),
-          const SizedBox(
-            height: 20,
-          ),
+          const SizedBox(height: 20),
           TextFormField(
             controller: _nameController,
             decoration: const InputDecoration(
@@ -55,16 +49,14 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Enter full name';
-              } else if (value.contains('12345678910')) {
+              } else if (value.contains(RegExp(r'\d'))) {
                 return 'Name must be in letters';
               } else {
                 return null;
               }
             },
           ),
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
           TextFormField(
             controller: _ageController,
             keyboardType: TextInputType.number,
@@ -75,16 +67,14 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Enter your age';
-              } else if (value.length > 2) {
+              } else if (int.tryParse(value) == null || int.parse(value) > 99) {
                 return 'Enter a valid age';
               } else {
                 return null;
               }
             },
           ),
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
           TextFormField(
             controller: _placeController,
             decoration: const InputDecoration(
@@ -99,9 +89,7 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
               }
             },
           ),
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
           TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.number,
@@ -118,12 +106,19 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
                   return null;
                 }
               }),
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
           ElevatedButton.icon(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                if (_imageData == null) {
+                  // Show a warning if no image is selected
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select an image'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                } else {
                   onAddStudentButtonClicked();
                   showDialog(
                     context: context,
@@ -131,7 +126,6 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
                       return AlertDialog(
                         title: const Text('Successfully added'),
                         actions: [
-
                           TextButton(
                             onPressed: () {
                               Navigator.of(context).pop();
@@ -143,9 +137,11 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
                     },
                   );
                 }
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Student'))
+              }
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Student'),
+          ),
         ]),
       ),
     );
@@ -153,38 +149,40 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
 
   Widget imageProfile() {
     return Center(
-      child: Stack(children: [
-        Container(
-          height: 100,
-          width: 100,
-          decoration: _imageToString != ''
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  image: DecorationImage(
+      child: Stack(
+        children: [
+          Container(
+            height: 100,
+            width: 100,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.blueGrey,
+              image: _imageData != null
+                  ? DecorationImage(
                       fit: BoxFit.cover,
-                      image: FileImage(File(_imageToString))))
-              : BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: Colors.blueGrey,
-                ),
-        ),
-        Positioned(
-          bottom: 10,
-          right: 10,
-          child: InkWell(
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (builder) => bottomsheet(),
-              );
-            },
-            child: const Icon(
-              Icons.camera_alt,
-              color: Colors.white,
+                      image: MemoryImage(_imageData!),
+                    )
+                  : null,
             ),
           ),
-        )
-      ]),
+          Positioned(
+            bottom: 10,
+            right: 10,
+            child: InkWell(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (builder) => bottomsheet(),
+                );
+              },
+              child: const Icon(
+                Icons.camera_alt,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -199,41 +197,34 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
             'Choose your photo',
             style: TextStyle(fontSize: 20),
           ),
-          const SizedBox(
-            height: 20,
-          ),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: <Widget>[
               TextButton.icon(
-                  onPressed: () {
-                    pickImage(ImageSource.gallery);
-                  },
-                  icon: const Icon(Icons.image),
-                  label: const Text('Gallery')),
+                onPressed: () {
+                  pickImage(ImageSource.gallery);
+                },
+                icon: const Icon(Icons.image),
+                label: const Text('Gallery'),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
   }
 
-  String _imageToString = '';
-  File imageTemp = File("");
   Future<void> pickImage(ImageSource source) async {
-    final image = await ImagePicker().pickImage(source: source);
-    if (image == null) {
-      return;
-    } else {
-      imageTemp = File(image.path);
-      _imageToString = image.path;
-      log(_imageToString);
+    final image = await picker.pickImage(
+        source: source); // Use the picker to pick an image
+    if (image != null) {
+      final bytes = await image.readAsBytes(); // Read the image as bytes
       setState(() {
-
-        _imageToString = image.path;
-        Navigator.of(context).pop();
+        _imageData = bytes; // Store the bytes in the state
       });
     }
+    Navigator.of(context).pop(); // Close the bottom sheet
   }
 
   Future<void> onAddStudentButtonClicked() async {
@@ -242,24 +233,54 @@ class _AddStudentWidgetState extends State<AddStudentWidget> {
     final place = _placeController.text.trim();
     final phone = _phoneController.text.trim();
 
-    if (name.isEmpty || age.isEmpty || place.isEmpty || phone.isEmpty) {
-      return;
-    } else {
-      final student = StudentModel(
-        name: name,
-        age: age,
-        place: place,
-        phone: phone,
-        imagePath: _imageToString,
+    if (name.isEmpty ||
+        age.isEmpty ||
+        place.isEmpty ||
+        phone.isEmpty ||
+        _imageData == null) {
+      // Validation for empty fields and image
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all fields and select an image'),
+          backgroundColor: Colors.red,
+        ),
       );
-      await DBFunctions.instance.addStudent(student);
-      _ageController.clear();
-      _nameController.clear();
-      _placeController.clear();
-      _phoneController.clear();
-      setState(() {
-        _imageToString = "";
-      });
+      return;
     }
+
+    final student = StudentModel(
+      name: name,
+      age: age,
+      place: place,
+      phone: phone,
+      imagePath: base64.encode(_imageData!), // Encode the image bytes to base64
+    );
+
+    await DBFunctions.instance.addStudent(student);
+
+    // Clear the form fields and image data after submission
+    _nameController.clear();
+    _ageController.clear();
+    _placeController.clear();
+    _phoneController.clear();
+    setState(() {
+      _imageData = null;
+    });
+
+    // Show a success message
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Successfully added'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Back'),
+          ),
+        ],
+      ),
+    );
   }
 }

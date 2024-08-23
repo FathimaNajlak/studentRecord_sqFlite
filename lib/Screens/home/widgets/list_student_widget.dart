@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../../db/functions/db_functions.dart';
 import '../../../db/model/data_model.dart';
@@ -80,8 +82,8 @@ class _ListStudentWidgetState extends State<ListStudentWidget> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         image: DecorationImage(
-                          image: FileImage(
-                            File(data.imagePath),
+                          image: MemoryImage(
+                            base64.decode(data.imagePath),
                           ),
                           fit: BoxFit.cover,
                         ),

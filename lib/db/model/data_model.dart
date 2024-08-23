@@ -5,7 +5,7 @@ class StudentModel {
   final String place;
   final String phone;
   final String imagePath;
-  
+
   StudentModel(
       {required this.name,
       required this.age,

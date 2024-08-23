@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../db/model/data_model.dart';
@@ -29,10 +30,8 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 50,
-                  backgroundImage: FileImage(
-                    File(
-                      data.imagePath,
-                    ),
+                  backgroundImage: MemoryImage(
+                    base64.decode(data.imagePath),
                   ),
                 ),
                 Text(
